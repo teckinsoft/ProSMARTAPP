@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ProSMARTAPP": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

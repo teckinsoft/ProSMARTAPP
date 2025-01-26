@@ -1,0 +1,63 @@
+﻿<Window x:Class="ProSMARTAPP.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:ProSMARTAPP"
+        mc:Ignorable="d"
+        Title="ProSMART Part Viewer" Height="500" Width="800"
+        MouseWheel="OnMouseWheel">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="40"/>
+            <!-- Added for UNION button -->
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1*"/>
+            <ColumnDefinition Width="1*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- PART-1 Button and TextBox -->
+        <Grid Grid.Row="0" Grid.Column="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"/>
+                <!-- Fixed width for Button -->
+                <ColumnDefinition Width="*"/>
+                <!-- Remaining space for TextBox -->
+            </Grid.ColumnDefinitions>
+            <Button Content="PART-1" Click="OnPart1Click" Margin="5" Height="30"/>
+            <TextBox x:Name="Part1FileNameTextBox" Grid.Column="1" Margin="5,0,10,0" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- PART-2 Button and TextBox -->
+        <Grid Grid.Row="0" Grid.Column="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"/>
+                <!-- Fixed width for Button -->
+                <ColumnDefinition Width="*"/>
+                <!-- Remaining space for TextBox -->
+            </Grid.ColumnDefinitions>
+            <Button Content="PART-2" Click="OnPart2Click" Margin="5" Height="30"/>
+            <TextBox x:Name="Part2FileNameTextBox" Grid.Column="1" Margin="5,0,10,0" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- PART-1 Rotate Button -->
+        <Button Content="Rotate 180 Deg" Click="OnPart1Rotate180Deg" Margin="5" Width="100" Height="30"
+                Grid.Row="1" Grid.Column="0" HorizontalAlignment="Left"/>
+
+        <!-- PART-2 Rotate Button -->
+        <Button Content="Rotate 180 Deg" Click="OnPart2Rotate180Deg" Margin="5" Width="100" Height="30"
+                Grid.Row="1" Grid.Column="1" HorizontalAlignment="Left"/>
+
+        <!-- Image control to display the PNG -->
+        <Image x:Name="ImageControl" Grid.Row="2" Grid.ColumnSpan="2" Stretch="Uniform" Margin="10"/>
+
+        <!-- UNION Button -->
+        <Button Content="UNION" Click="OnUnionClick" Margin="5" Height="40"
+                Grid.Row="3" Grid.ColumnSpan="2" HorizontalAlignment="Center" Width="300"/>
+    </Grid>
+</Window>
