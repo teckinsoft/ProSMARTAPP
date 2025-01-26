@@ -690,8 +690,8 @@ void  IGESHandler::RotatePartBy180AboutZAxis(int order) {
    auto parallelaxis = gp_Dir(0, 0, 1);
 
    ScrewRotationAboutMidPart(shape, pt, parallelaxis, 180);
-   if ( order == 0 ) mpIGESHandlerPimpl->SetLeftShape(shape);
-   else if ( order == 1) mpIGESHandlerPimpl->SetRightShape(shape);
+   if (order == 0) mpIGESHandlerPimpl->SetLeftShape(shape);
+   else if (order == 1) mpIGESHandlerPimpl->SetRightShape(shape);
    AlignToXYPlane(order);
 }
 
@@ -1080,9 +1080,9 @@ std::vector<unsigned char> IGESHandler::DumpFusedShape(const int width, const in
    auto fusedShape = mpIGESHandlerPimpl->GetFusedShape();
    //auto mirroredShape = mpIGESHandlerPimpl->GetMirroredShape();
    // Check if at least one shape is valid
-   if (fusedShape.IsNull()) 
+   if (fusedShape.IsNull())
       throw std::runtime_error("Both shapes are null or not loaded.");
-   
+
 
    // Prepare viewer
    Handle(Aspect_DisplayConnection) displayConnection = new Aspect_DisplayConnection();
@@ -1228,7 +1228,7 @@ void IGESHandler::UnionShapes() {
       auto leftShape = mpIGESHandlerPimpl->GetLeftShape();
       Mirror();
       auto mirroredShape = mpIGESHandlerPimpl->GetMirroredShape();
-      
+
 
       // Ensure both shapes are valid
       if (leftShape.IsNull()) {
@@ -1437,17 +1437,17 @@ void IGESHandler::Mirror() {
 //}
 
 void IGESHandler::HandleIntersectingBoundingCurves(TopoDS_Shape& fusedShape, double tolerance) {
-   
-      //// Create the ShapeUpgrade_UnifySameDomain object
-      //ShapeUpgrade_UnifySameDomain unify(fusedShape, Standard_True, Standard_True, Standard_False);
 
-      //// Perform the unification
-      //unify.Build();
+   //// Create the ShapeUpgrade_UnifySameDomain object
+   //ShapeUpgrade_UnifySameDomain unify(fusedShape, Standard_True, Standard_True, Standard_False);
 
-      //// Get the refined shape
-      //fusedShape = unify.Shape();
+   //// Perform the unification
+   //unify.Build();
 
-    // Step 1: Sew gaps between surfaces
+   //// Get the refined shape
+   //fusedShape = unify.Shape();
+
+ // Step 1: Sew gaps between surfaces
    BRepBuilderAPI_Sewing sewing(tolerance);
    sewing.Add(fusedShape);
    sewing.Perform();
@@ -1461,10 +1461,8 @@ void IGESHandler::HandleIntersectingBoundingCurves(TopoDS_Shape& fusedShape, dou
    // Step 3: Refine the shape to remove small edges
    ShapeUpgrade_UnifySameDomain unify(fusedShape, Standard_True, Standard_True, Standard_False);
    unify.Build();
-   fusedShape =  unify.Shape();
+   fusedShape = unify.Shape();
 
-
-   
    // Step 1: Heal the shape to fix gaps and ensure continuity
    Handle(ShapeFix_Shape) shapeFix = new ShapeFix_Shape(fusedShape);
    shapeFix->SetPrecision(1e-3); // Set tolerance for fixing gaps
@@ -1477,21 +1475,21 @@ void IGESHandler::HandleIntersectingBoundingCurves(TopoDS_Shape& fusedShape, dou
 
    fusedShape = unify.Shape();
 }
-   
-   /*TopTools_IndexedMapOfShape edges, faces;
-   TopExp::MapShapes(fusedShape, TopAbs_EDGE, edges);
-   TopExp::MapShapes(fusedShape, TopAbs_FACE, faces);
 
-   std::vector<Bnd_Box> faceBoundingBoxes(faces.Extent());
-   for (int i = 1; i <= faces.Extent(); ++i) {
-      const TopoDS_Face& face = TopoDS::Face(faces(i));
-      BRepBndLib::Add(face, faceBoundingBoxes[i - 1]);
-      faceBoundingBoxes[i - 1].Enlarge(tolerance);
-   }
+/*TopTools_IndexedMapOfShape edges, faces;
+TopExp::MapShapes(fusedShape, TopAbs_EDGE, edges);
+TopExp::MapShapes(fusedShape, TopAbs_FACE, faces);
 
-   TopoDS_Compound resultShape;
-   BRep_Builder resultBuilder;
-   resultBuilder.MakeCompound(resultShape);
+std::vector<Bnd_Box> faceBoundingBoxes(faces.Extent());
+for (int i = 1; i <= faces.Extent(); ++i) {
+   const TopoDS_Face& face = TopoDS::Face(faces(i));
+   BRepBndLib::Add(face, faceBoundingBoxes[i - 1]);
+   faceBoundingBoxes[i - 1].Enlarge(tolerance);
+}
+
+TopoDS_Compound resultShape;
+BRep_Builder resultBuilder;
+resultBuilder.MakeCompound(resultShape);
 
 #pragma omp parallel for schedule(static)
    for (int i = 1; i <= edges.Extent(); ++i) {
