@@ -54,7 +54,24 @@
                 Grid.Row="1" Grid.Column="1" HorizontalAlignment="Left"/>
 
         <!-- Image control to display the PNG -->
-        <Image x:Name="ImageControl" Grid.Row="2" Grid.ColumnSpan="2" Stretch="Uniform" Margin="10"/>
+        <!--<Image x:Name="ImageControl" Grid.Row="2" Grid.ColumnSpan="2" Stretch="Uniform" Margin="10"/>-->
+        <!--<Image x:Name="ImageControl" Grid.Row="2" Grid.ColumnSpan="2" Stretch="Uniform" Margin="10" MouseWheel="ImageControl_MouseWheel">
+            <Image.RenderTransform>
+                <ScaleTransform x:Name="ImageScale" ScaleX="1" ScaleY="1" />
+            </Image.RenderTransform>
+        </Image>-->
+
+        <Image x:Name="ImageControl" Grid.Row="2" Grid.ColumnSpan="2" Stretch="Uniform" Margin="10"
+       MouseWheel="ImageControl_MouseWheel" MouseLeftButtonDown="ImageControl_MouseLeftButtonDown"
+       MouseLeftButtonUp="ImageControl_MouseLeftButtonUp" MouseMove="ImageControl_MouseMove">
+            <Image.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="ImageScale" ScaleX="1" ScaleY="1" />
+                    <TranslateTransform x:Name="PanTransform" X="0" Y="0" />
+                </TransformGroup>
+            </Image.RenderTransform>
+        </Image>
+
 
         <!-- UNION Button -->
         <Button Content="UNION" Click="OnUnionClick" Margin="5" Height="40"

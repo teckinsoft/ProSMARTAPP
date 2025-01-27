@@ -9,6 +9,12 @@ namespace ProSMARTAPP {
    public partial class MainWindow : Window {
       IGESHandlerWrapper igesHandler;
 
+      Point mLastMousePosition; // For panning
+      bool mIsPanning = false;  // Indicates panning state
+      const double ZoomFactor = 1.1; // Zoom scale factor
+      const double MinZoom = 0.5;    // Minimum zoom level
+      const double MaxZoom = 5.0;    // Maximum zoom level
+
       public MainWindow () {
          InitializeComponent ();
       }
@@ -16,8 +22,7 @@ namespace ProSMARTAPP {
       void LoadPart (string filename, int order) {
          try {
             // Initialize and use IGESHandlerWrapper
-            if (igesHandler == null)
-               igesHandler = new IGESHandlerWrapper ();
+            igesHandler ??= new IGESHandlerWrapper ();
             igesHandler.Initialize ();
             igesHandler.LoadIGES (filename, order);
 
@@ -72,7 +77,7 @@ namespace ProSMARTAPP {
          }
       }
 
-      private async void OnPart2Click (object sender, RoutedEventArgs e) {
+      async void OnPart2Click (object sender, RoutedEventArgs e) {
          var openFileDialog = new Microsoft.Win32.OpenFileDialog {
             Title = "Select a Part File",
             Filter = "CAD Files (*.iges;*.igs;*.stp;*.step)|*.iges;*.igs;*.stp;*.step|All Files (*.*)|*.*",
@@ -143,7 +148,7 @@ namespace ProSMARTAPP {
          }
       }
 
-      private void DisplayInputsImage () {
+      void DisplayInputsImage () {
          if (igesHandler == null)
             throw new Exception ("IGES Handler is null");
 
@@ -158,7 +163,7 @@ namespace ProSMARTAPP {
 
          ImageControl.Source = bitmap;
       }
-      private void DisplayOutputImage () {
+      void DisplayOutputImage () {
          if (igesHandler == null)
             throw new Exception ("IGES Handler is null");
 
@@ -174,7 +179,7 @@ namespace ProSMARTAPP {
          ImageControl.Source = bitmap;
       }
 
-      private void OnMouseWheel (object sender, MouseWheelEventArgs e) {
+      void OnMouseWheel (object sender, MouseWheelEventArgs e) {
          try {
             if (igesHandler != null) {
                if (e.Delta > 0) {
@@ -188,42 +193,145 @@ namespace ProSMARTAPP {
             MessageBox.Show ($"Zoom operation failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
          }
       }
-      private void OnUnionClick (object sender, RoutedEventArgs e) {
+
+      async void OnUnionClick (object sender, RoutedEventArgs e) {
+         var saveFileDialog = new Microsoft.Win32.SaveFileDialog {
+            Title = "Save Unioned IGES File",
+            DefaultExt = ".igs",
+            Filter = "IGES Files (*.igs)|*.igs|IGES Files (*.iges)|*.iges",
+            InitialDirectory = @"W:\FChassis\Sample",
+            FileName = "UnionResult.igs"
+         };
+
          try {
-            // Perform union operation on the two parts
-            igesHandler.UnionShapes ();
+            // Set the busy cursor
+            Mouse.OverrideCursor = Cursors.Wait;
 
-            // Generate the union image and display it
-            var unionImageData = igesHandler.DumpFusedShape (800, 600);
+            byte[] unionImageData = null;
 
-            DisplayOutputImage ();
-            // Display the generated PNG image
-            using (var ms = new MemoryStream (unionImageData)) {
-               var bitmap = new BitmapImage ();
-               bitmap.BeginInit ();
-               bitmap.CacheOption = BitmapCacheOption.OnLoad;
-               bitmap.StreamSource = ms;
-               bitmap.EndInit ();
-               ImageControl.Source = bitmap;
+            // Perform the union operation on a background thread
+            await Task.Run (() =>
+            {
+               // Perform the union operation
+               igesHandler.UnionShapes ();
+
+               // Generate the union image
+               unionImageData = igesHandler.DumpFusedShape (800, 600);
+            });
+
+            // Display the union image on the UI thread
+            if (unionImageData != null) {
+               await Application.Current.Dispatcher.InvokeAsync (() =>
+               {
+                  using var ms = new MemoryStream (unionImageData);
+                  var bitmap = new BitmapImage ();
+                  bitmap.BeginInit ();
+                  bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                  bitmap.StreamSource = ms;
+                  bitmap.EndInit ();
+                  ImageControl.Source = bitmap;
+               });
             }
 
-            // Open a File Save dialog to save the resulting IGES file
-            var saveFileDialog = new Microsoft.Win32.SaveFileDialog {
-               Title = "Save Unioned IGES File",
-               DefaultExt = ".igs",
-               Filter = "IGES Files (*.igs)|*.igs|IGES Files (*.iges)|*.iges",
-               InitialDirectory = @"W:\FChassis\Sample",
-               FileName = "UnionResult.igs"
-            };
-
+            // Show the file save dialog and save the IGES file
             if (saveFileDialog.ShowDialog () == true) {
-               // Save the unioned shape to the selected file
-               igesHandler.SaveIGES (saveFileDialog.FileName, 2); // Assuming order 0 is for the union result
-               MessageBox.Show ($"Unioned IGES file saved successfully to {saveFileDialog.FileName}");
+               await Task.Run (() =>
+               {
+                  // Save the unioned shape to the selected file
+                  igesHandler.SaveIGES (saveFileDialog.FileName, 2);
+               });
+
+               MessageBox.Show ($"Unioned IGES file saved successfully to {saveFileDialog.FileName}",
+                               "Save Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             }
          } catch (Exception ex) {
-            MessageBox.Show ($"Error during union operation: {ex.Message}");
+            MessageBox.Show ($"Error during union operation: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+         } finally {
+            // Reset the cursor
+            Mouse.OverrideCursor = null;
          }
       }
+
+      //void OnUnionClick (object sender, RoutedEventArgs e) {
+      //   try {
+      //      // Perform union operation on the two parts
+      //      igesHandler.UnionShapes ();
+
+      //      // Generate the union image and display it
+      //      var unionImageData = igesHandler.DumpFusedShape (800, 600);
+
+      //      DisplayOutputImage ();
+      //      // Display the generated PNG image
+      //      using (var ms = new MemoryStream (unionImageData)) {
+      //         var bitmap = new BitmapImage ();
+      //         bitmap.BeginInit ();
+      //         bitmap.CacheOption = BitmapCacheOption.OnLoad;
+      //         bitmap.StreamSource = ms;
+      //         bitmap.EndInit ();
+      //         ImageControl.Source = bitmap;
+      //      }
+
+      //      // Open a File Save dialog to save the resulting IGES file
+      //      var saveFileDialog = new Microsoft.Win32.SaveFileDialog {
+      //         Title = "Save Unioned IGES File",
+      //         DefaultExt = ".igs",
+      //         Filter = "IGES Files (*.igs)|*.igs|IGES Files (*.iges)|*.iges",
+      //         InitialDirectory = @"W:\FChassis\Sample",
+      //         FileName = "UnionResult.igs"
+      //      };
+
+      //      if (saveFileDialog.ShowDialog () == true) {
+      //         // Save the unioned shape to the selected file
+      //         igesHandler.SaveIGES (saveFileDialog.FileName, 2); // Assuming order 0 is for the union result
+      //         MessageBox.Show ($"Unioned IGES file saved successfully to {saveFileDialog.FileName}");
+      //      }
+      //   } catch (Exception ex) {
+      //      MessageBox.Show ($"Error during union operation: {ex.Message}");
+      //   }
+      //}
+
+      void ImageControl_MouseLeftButtonDown (object sender, MouseButtonEventArgs e) {
+         mLastMousePosition = e.GetPosition (this); // Capture the mouse position
+         mIsPanning = true; // Enable panning
+         ImageControl.CaptureMouse (); // Capture the mouse for continued event handling
+      }
+
+      void ImageControl_MouseMove (object sender, MouseEventArgs e) {
+         if (mIsPanning) {
+            Point currentMousePosition = e.GetPosition (this); // Current mouse position
+            double offsetX = currentMousePosition.X - mLastMousePosition.X; // Horizontal offset
+            double offsetY = currentMousePosition.Y - mLastMousePosition.Y; // Vertical offset
+
+            PanTransform.X += offsetX; // Apply horizontal panning
+            PanTransform.Y += offsetY; // Apply vertical panning
+
+            mLastMousePosition = currentMousePosition; // Update the last position
+         }
+      }
+
+      void ImageControl_MouseLeftButtonUp (object sender, MouseButtonEventArgs e) {
+         mIsPanning = false; // Disable panning
+         ImageControl.ReleaseMouseCapture (); // Release the mouse capture
+      }
+
+      void ImageControl_MouseWheel (object sender, MouseWheelEventArgs e) {
+         double zoomFactor = e.Delta > 0 ? 1.1 : 0.9; // Zoom in or out
+         Point mousePosition = e.GetPosition (ImageControl); // Get mouse position relative to the image
+
+         double newScaleX = ImageScale.ScaleX * zoomFactor;
+         double newScaleY = ImageScale.ScaleY * zoomFactor;
+
+         // Clamp the zoom levels
+         if (newScaleX < MinZoom || newScaleX > MaxZoom)
+            return;
+
+         ImageScale.ScaleX = newScaleX;
+         ImageScale.ScaleY = newScaleY;
+
+         // Adjust the TranslateTransform to zoom toward the mouse pointer
+         PanTransform.X -= (mousePosition.X - PanTransform.X) * (zoomFactor - 1);
+         PanTransform.Y -= (mousePosition.Y - PanTransform.Y) * (zoomFactor - 1);
+      }
+
    }
 }

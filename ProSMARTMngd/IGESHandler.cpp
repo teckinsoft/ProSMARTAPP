@@ -74,6 +74,20 @@ struct SurfaceInfo {
    double width;  // Shortest dimension
 };
 
+size_t GetBytesPerPixel(const Image_AlienPixMap& img)
+{
+   switch (img.Format()) {
+   case Image_Format_RGB:  return 3;
+   case Image_Format_RGBA: return 4;
+   case Image_Format_BGR:  return 3;
+   case Image_Format_BGRA: return 4;
+   case Image_Format_Gray: return 1;
+   default:
+      throw std::runtime_error("Unsupported image format in AlienPixMap.");
+   }
+}
+
+
 // Function to check if a face is a surface of revolution
 bool isSurfaceOfRevolution(const TopoDS_Face& face) {
    Handle(Geom_Surface) surface = BRep_Tool::Surface(face);
@@ -985,94 +999,201 @@ bool IGESHandler::DoesVectorIntersectShape(const TopoDS_Shape& shape, const gp_P
 
 
 
+//std::vector<unsigned char> IGESHandler::DumpInputShapes(const int width, const int height)
+//{
+//   std::vector<unsigned char> res;
+//   auto leftShape = mpIGESHandlerPimpl->GetLeftShape();
+//   auto mirroredShape = mpIGESHandlerPimpl->GetMirroredShape();
+//   // Check if at least one shape is valid
+//   if ((leftShape.IsNull()) &&
+//      mirroredShape.IsNull()) {
+//      throw std::runtime_error("Both shapes are null or not loaded.");
+//   }
+//
+//   // Prepare viewer
+//   Handle(Aspect_DisplayConnection) displayConnection = new Aspect_DisplayConnection();
+//   Handle(OpenGl_GraphicDriver) graphicDriver = new OpenGl_GraphicDriver(displayConnection);
+//
+//   // Create a viewer and view
+//   //mpViewerPimpl = std::make_unique<IGESHandler_Viewer>(Handle(V3d_Viewer)(new V3d_Viewer(graphicDriver)));
+//   auto v3dViewer = (Handle(V3d_Viewer)(new V3d_Viewer(graphicDriver)));
+//   mpIGESHandlerPimpl->SetViewer(v3dViewer);
+//
+//   //Handle(V3d_Viewer) viewer = new V3d_Viewer(graphicDriver);
+//   mpIGESHandlerPimpl->GetViewer()->SetDefaultLights();
+//   mpIGESHandlerPimpl->GetViewer()->SetLightOn();
+//
+//   // Prepare context
+//   Handle(AIS_InteractiveContext) context = new AIS_InteractiveContext(mpIGESHandlerPimpl->GetViewer());
+//
+//   // Prepare off-screen view
+//   Handle(V3d_View) view = mpIGESHandlerPimpl->GetViewer()->CreateView();
+//   Handle(Aspect_NeutralWindow) wnd = new Aspect_NeutralWindow();
+//   wnd->SetSize(width, height);
+//   wnd->SetVirtual(true);
+//   view->SetWindow(wnd);
+//   view->SetBackgroundColor(Quantity_Color(Quantity_NOC_WHITE));
+//   view->MustBeResized();
+//
+//   // Prepare bounding box for fitting
+//   Bnd_Box combinedBoundingBox;
+//
+//   // Display mShapeLeft if available
+//   if (!leftShape.IsNull()) {
+//      Handle(AIS_Shape) leftPresentation = new AIS_Shape(leftShape);
+//      context->Display(leftPresentation, Standard_False);
+//      context->SetDisplayMode(leftPresentation, AIS_Shaded, Standard_False);
+//      BRepBndLib::Add(leftShape, combinedBoundingBox);
+//   }
+//
+//   // Display mMirroredShape if available
+//   if (!mirroredShape.IsNull()) {
+//      Handle(AIS_Shape) rightPresentation = new AIS_Shape(mirroredShape);
+//      context->Display(rightPresentation, Standard_False);
+//      context->SetDisplayMode(rightPresentation, AIS_Shaded, Standard_False);
+//      BRepBndLib::Add(mirroredShape, combinedBoundingBox);
+//   }
+//
+//   // Check if the bounding box is valid
+//   if (combinedBoundingBox.IsVoid()) {
+//      throw std::runtime_error("Bounding box of the shapes is void. Shapes might be empty.");
+//   }
+//
+//   //// Fit view and redraw
+//   //view->FitAll(0.01, Standard_True);
+//   //view->Redraw();
+//   // Fit view to the object and calculate the center
+//   view->FitAll(0.01, Standard_True);
+//   gp_Pnt bboxCenter;
+//   if (!combinedBoundingBox.IsVoid()) {
+//      Standard_Real xmin, ymin, zmin, xmax, ymax, zmax;
+//      combinedBoundingBox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+//      bboxCenter = gp_Pnt((xmin + xmax) / 2.0, (ymin + ymax) / 2.0, (zmin + zmax) / 2.0);
+//   }
+//   else {
+//      throw std::runtime_error("Bounding box is void. Cannot adjust view.");
+//   }
+//
+//   // Adjust the viewpoint: move the camera closer
+//   gp_Pnt eyePosition = bboxCenter.Translated(gp_Vec(0, 0, 300)); // Adjust the offset to move closer
+//   view->SetEye(eyePosition.X(), eyePosition.Y(), eyePosition.Z());
+//   view->SetAt(bboxCenter.X(), bboxCenter.Y(), bboxCenter.Z());
+//
+//   // Optionally, control zoom to focus further
+//   view->SetZoom(1.5); // 1.5x zoom closer, adjust as needed
+//
+//   // Redraw the view
+//   view->Redraw();
+//
+//   // Prepare pixmap image
+//   Image_AlienPixMap img;
+//   if (!view->ToPixMap(img, width, height)) {
+//      throw std::runtime_error("Failed to render the view to pixmap.");
+//   }
+//
+//   // Save image into a temporary file
+//   TCollection_AsciiString filename = "C:\\temp\\iges_content.png";
+//   img.Save(filename);
+//
+//   // Read the file content into memory
+//   std::ifstream file(filename.ToCString(), std::ios::binary);
+//   if (!file) {
+//      throw std::runtime_error("Failed to open saved PNG file.");
+//   }
+//
+//   std::vector<unsigned char> pngData((std::istreambuf_iterator<char>(file)),
+//      std::istreambuf_iterator<char>());
+//
+//   // Delete the temporary file
+//   std::remove(filename.ToCString());
+//
+//   return pngData;
+//}
+
 std::vector<unsigned char> IGESHandler::DumpInputShapes(const int width, const int height)
 {
-   std::vector<unsigned char> res;
-   auto leftShape = mpIGESHandlerPimpl->GetLeftShape();
-   auto mirroredShape = mpIGESHandlerPimpl->GetMirroredShape();
-   // Check if at least one shape is valid
-   if ((leftShape.IsNull()) &&
-      mirroredShape.IsNull()) {
-      throw std::runtime_error("Both shapes are null or not loaded.");
+   try {
+      std::vector<unsigned char> res;
+      auto leftShape = mpIGESHandlerPimpl->GetLeftShape();
+      auto mirroredShape = mpIGESHandlerPimpl->GetMirroredShape();
+
+      if (leftShape.IsNull() && mirroredShape.IsNull()) {
+         throw std::runtime_error("Both shapes are null or not loaded.");
+      }
+
+      // Initialize viewer
+      Handle(Aspect_DisplayConnection) displayConnection = new Aspect_DisplayConnection();
+      Handle(OpenGl_GraphicDriver) graphicDriver = new OpenGl_GraphicDriver(displayConnection);
+      auto v3dViewer = (Handle(V3d_Viewer)(new V3d_Viewer(graphicDriver)));
+      mpIGESHandlerPimpl->SetViewer(v3dViewer);
+
+      mpIGESHandlerPimpl->GetViewer()->SetDefaultLights();
+      mpIGESHandlerPimpl->GetViewer()->SetLightOn();
+      Handle(AIS_InteractiveContext) context = new AIS_InteractiveContext(mpIGESHandlerPimpl->GetViewer());
+
+      // Prepare off-screen view
+      Handle(V3d_View) view = mpIGESHandlerPimpl->GetViewer()->CreateView();
+      Handle(Aspect_NeutralWindow) wnd = new Aspect_NeutralWindow();
+      wnd->SetSize(width, height);
+      wnd->SetVirtual(true);
+      view->SetWindow(wnd);
+      view->SetBackgroundColor(Quantity_Color(Quantity_NOC_WHITE));
+      view->MustBeResized();
+
+      // Calculate bounding box
+      Bnd_Box combinedBoundingBox;
+      if (!leftShape.IsNull()) {
+         Handle(AIS_Shape) leftPresentation = new AIS_Shape(leftShape);
+         context->Display(leftPresentation, Standard_False);
+         context->SetDisplayMode(leftPresentation, AIS_Shaded, Standard_False);
+         BRepBndLib::Add(leftShape, combinedBoundingBox);
+      }
+      if (!mirroredShape.IsNull()) {
+         Handle(AIS_Shape) rightPresentation = new AIS_Shape(mirroredShape);
+         context->Display(rightPresentation, Standard_False);
+         context->SetDisplayMode(rightPresentation, AIS_Shaded, Standard_False);
+         BRepBndLib::Add(mirroredShape, combinedBoundingBox);
+      }
+
+      if (combinedBoundingBox.IsVoid()) {
+         throw std::runtime_error("Bounding box of the shapes is void. Shapes might be empty.");
+      }
+
+      // Fit view and adjust camera
+      view->FitAll(0.01, Standard_True);
+      Standard_Real xmin, ymin, zmin, xmax, ymax, zmax;
+      combinedBoundingBox.Get(xmin, ymin, zmin, xmax, ymax, zmax);
+      gp_Pnt bboxCenter((xmin + xmax) / 2.0, (ymin + ymax) / 2.0, (zmin + zmax) / 2.0);
+
+      gp_Vec offsetVec(0, 0, (xmax - xmin) * 0.5); // Dynamic offset
+      gp_Pnt eyePosition = bboxCenter.Translated(offsetVec);
+      view->SetEye(eyePosition.X(), eyePosition.Y(), eyePosition.Z());
+      view->SetAt(bboxCenter.X(), bboxCenter.Y(), bboxCenter.Z());
+      view->SetZoom(1.5);
+      view->Redraw();
+
+      // Capture pixmap
+      Image_AlienPixMap img;
+      if (!view->ToPixMap(img, width, height)) {
+         throw std::runtime_error("Failed to render the view to pixmap.");
+      }
+
+      // Calculate the size of the pixmap data
+      size_t bytesPerPixel = GetBytesPerPixel(img);
+      size_t imgSize = img.Width() * img.Height() * bytesPerPixel;
+
+      // Return the pixmap data as a vector of unsigned char
+      return std::vector<unsigned char>(
+         reinterpret_cast<const unsigned char*>(img.Data()),
+         reinterpret_cast<const unsigned char*>(img.Data() + imgSize));
    }
-
-   // Prepare viewer
-   Handle(Aspect_DisplayConnection) displayConnection = new Aspect_DisplayConnection();
-   Handle(OpenGl_GraphicDriver) graphicDriver = new OpenGl_GraphicDriver(displayConnection);
-
-   // Create a viewer and view
-   //mpViewerPimpl = std::make_unique<IGESHandler_Viewer>(Handle(V3d_Viewer)(new V3d_Viewer(graphicDriver)));
-   auto v3dViewer = (Handle(V3d_Viewer)(new V3d_Viewer(graphicDriver)));
-   mpIGESHandlerPimpl->SetViewer(v3dViewer);
-
-   //Handle(V3d_Viewer) viewer = new V3d_Viewer(graphicDriver);
-   mpIGESHandlerPimpl->GetViewer()->SetDefaultLights();
-   mpIGESHandlerPimpl->GetViewer()->SetLightOn();
-
-   // Prepare context
-   Handle(AIS_InteractiveContext) context = new AIS_InteractiveContext(mpIGESHandlerPimpl->GetViewer());
-
-   // Prepare off-screen view
-   Handle(V3d_View) view = mpIGESHandlerPimpl->GetViewer()->CreateView();
-   Handle(Aspect_NeutralWindow) wnd = new Aspect_NeutralWindow();
-   wnd->SetSize(width, height);
-   wnd->SetVirtual(true);
-   view->SetWindow(wnd);
-   view->SetBackgroundColor(Quantity_Color(Quantity_NOC_WHITE));
-   view->MustBeResized();
-
-   // Prepare bounding box for fitting
-   Bnd_Box combinedBoundingBox;
-
-   // Display mShapeLeft if available
-   if (!leftShape.IsNull()) {
-      Handle(AIS_Shape) leftPresentation = new AIS_Shape(leftShape);
-      context->Display(leftPresentation, Standard_False);
-      context->SetDisplayMode(leftPresentation, AIS_Shaded, Standard_False);
-      BRepBndLib::Add(leftShape, combinedBoundingBox);
+   catch (const std::exception& ex) {
+      std::cerr << "Error in DumpInputShapes: " << ex.what() << std::endl;
+      throw;
    }
-
-   // Display mMirroredShape if available
-   if (!mirroredShape.IsNull()) {
-      Handle(AIS_Shape) rightPresentation = new AIS_Shape(mirroredShape);
-      context->Display(rightPresentation, Standard_False);
-      context->SetDisplayMode(rightPresentation, AIS_Shaded, Standard_False);
-      BRepBndLib::Add(mirroredShape, combinedBoundingBox);
-   }
-
-   // Check if the bounding box is valid
-   if (combinedBoundingBox.IsVoid()) {
-      throw std::runtime_error("Bounding box of the shapes is void. Shapes might be empty.");
-   }
-
-   // Fit view and redraw
-   view->FitAll(0.01, Standard_True);
-   view->Redraw();
-
-   // Prepare pixmap image
-   Image_AlienPixMap img;
-   if (!view->ToPixMap(img, width, height)) {
-      throw std::runtime_error("Failed to render the view to pixmap.");
-   }
-
-   // Save image into a temporary file
-   TCollection_AsciiString filename = "C:\\temp\\iges_content.png";
-   img.Save(filename);
-
-   // Read the file content into memory
-   std::ifstream file(filename.ToCString(), std::ios::binary);
-   if (!file) {
-      throw std::runtime_error("Failed to open saved PNG file.");
-   }
-
-   std::vector<unsigned char> pngData((std::istreambuf_iterator<char>(file)),
-      std::istreambuf_iterator<char>());
-
-   // Delete the temporary file
-   std::remove(filename.ToCString());
-
-   return pngData;
 }
+
+
 
 std::vector<unsigned char> IGESHandler::DumpFusedShape(const int width, const int height)
 {
