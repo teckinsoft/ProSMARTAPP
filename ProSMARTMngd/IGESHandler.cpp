@@ -1178,6 +1178,9 @@ std::vector<unsigned char> IGESHandler::DumpInputShapes(const int width, const i
          throw std::runtime_error("Failed to render the view to pixmap.");
       }
 
+      TCollection_AsciiString filename = "C:\\temp\\input_shapes.png";
+      img.Save(filename);
+
       // Calculate the size of the pixmap data
       size_t bytesPerPixel = GetBytesPerPixel(img);
       size_t imgSize = img.Width() * img.Height() * bytesPerPixel;
@@ -1257,7 +1260,7 @@ std::vector<unsigned char> IGESHandler::DumpFusedShape(const int width, const in
    }
 
    // Save image into a temporary file
-   TCollection_AsciiString filename = "C:\\temp\\iges_content.png";
+   TCollection_AsciiString filename = "C:\\temp\\fused_shape.png";
    img.Save(filename);
 
    // Read the file content into memory
